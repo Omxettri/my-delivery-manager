@@ -21,9 +21,17 @@ jobs:
 
       - name: Extract Android project
         run: |
-          ZIP=$(find . -maxdepth 1 -name 'MyDeliveryManager-Android-Source-v*.zip' | sort -V | tail -n 1)
-          test -n "$ZIP"
+                - name: Extract Android project
+        run: |
+          echo "Checking repository files..."
+          ls -lah
+          ZIP="./MyDeliveryManager-Android-Source.zip"
+          if [ ! -f "$ZIP" ]; then
+            echo "ERROR: Source ZIP not found!"
+            exit 1
+          fi
           unzip -oq "$ZIP" -d .
+          echo "Extraction completed."
 
       - name: Verify project
         run: |

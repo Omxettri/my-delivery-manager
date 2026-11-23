@@ -1,1 +1,69 @@
 
+name: Build My Delivery Manager v1.9 APK
+
+"on":
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract Android project
+        run: |
+          ZIP=$(find . -maxdepth 1 -name 'MyDeliveryManager-Android-Source-v*.zip' | sort -V | tail -n 1)
+          test -n "$ZIP"
+          unzip -oq "$ZIP" -d .
+
+      - name: Verify project
+        run: |
+          grep -q 'versionCode = 10' app/build.gradle.kts
+          grep -q 'versionName = "1.9"' app/build.gradle.kts
+          test -f app/src/main/java/com/example/mydeliverymanager/AppLockPolicy.kt
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Test and build APK
+        run: gradle --no-daemon clean testDebugUnitTest :app:assembleDebug
+
+      - name: Verify APK
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -s "$APK"
+          "$AAPT" dump badging "$APK" | grep "versionCode='10' versionName='1.9'"
+          sha256sum "$APK"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-delivery-manager-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
